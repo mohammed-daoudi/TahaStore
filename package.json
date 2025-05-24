@@ -1,0 +1,14 @@
+{
+  "name": "ecommerce-root",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:produit\" \"npm run start:commande\"",
+    "start:frontend": "npm run dev --prefix ecommerce-front",
+    "start:auth": "npm start --prefix ecommerce-back/auth-service",
+    "start:produit": "npm start --prefix ecommerce-back/produit-service",
+    "start:commande": "npm start --prefix ecommerce-back/commande-service"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
