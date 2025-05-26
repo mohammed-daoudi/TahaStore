@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./ecommerce-front
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./ecommerce-back
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ecommerce-back:/app

@@ -1,6 +1,7 @@
 {
   "name": "ecommerce-root",
   "version": "1.0.0",
+  "main":"app.js",
   "scripts": {
     "start": "concurrently \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:produit\" \"npm run start:commande\"",
     "start:frontend": "npm run dev --prefix ecommerce-front",
