@@ -1,36 +1,44 @@
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT_ONE || 4002;
-const mongoose = require("mongoose");
-const Utilisateur = require("./Utilisateur");
 const jwt = require("jsonwebtoken");
-const bcrypt = require('bcryptjs');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 
-// MongoDB connection configuration
-const MONGODB_URI = "mongodb://localhost:27017/ecommerce";
+// Import database configuration and models
+const { sequelize, testConnection } = require('../database/config');
+const { User } = require('../database/models');
+
+// JWT Secret
 const JWT_SECRET = "your-super-secret-jwt-key-change-this-in-production";
 
 // Enable CORS
 app.use(cors());
 app.use(express.json());
 
+// Admin authentication middleware
+function adminAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ message: 'Invalid token' });
+    if (user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    req.user = user;
+    next();
+  });
+}
+
 // Test route to verify database connection
 app.get("/test-db", async (req, res) => {
     try {
-        // Try to connect to MongoDB
-        await mongoose.connect(MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        
-        // Check if we can perform a simple operation
-        const userCount = await Utilisateur.countDocuments();
+        await testConnection();
+        const userCount = await User.count();
         
         res.json({
             message: "Database connection successful",
             userCount: userCount,
-            database: mongoose.connection.db.databaseName
+            database: "shopease_db"
         });
     } catch (error) {
         res.status(500).json({
@@ -40,50 +48,140 @@ app.get("/test-db", async (req, res) => {
     }
 });
 
-// MongoDB connection with retry logic
-const connectWithRetry = async () => {
+// Initialize database connection
+const initializeDatabase = async () => {
     try {
-        await mongoose.connect(MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        console.log('Successfully connected to MongoDB.');
-        
-        // Create indexes after connection
-        await Utilisateur.createIndexes();
-        console.log('Database indexes created successfully');
+        await testConnection();
+        console.log('✅ Auth Service: Successfully connected to MySQL database.');
     } catch (error) {
-        console.error('MongoDB connection error:', error);
+        console.error('❌ Auth Service: Database connection error:', error);
         console.log('Retrying connection in 5 seconds...');
-        setTimeout(connectWithRetry, 5000);
+        setTimeout(initializeDatabase, 5000);
     }
 };
 
 // Initial connection attempt
-connectWithRetry();
-
-// Connection event handlers
-mongoose.connection.on('error', (err) => {
-    console.error('MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected. Attempting to reconnect...');
-    connectWithRetry();
-});
-
-mongoose.connection.on('reconnected', () => {
-    console.log('MongoDB reconnected');
-});
-
-// Middleware
-app.use(cors());
-app.use(express.json());
+initializeDatabase();
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// Admin: Get all users
+app.get("/admin/users", adminAuth, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search } = req.query;
+        const offset = (page - 1) * limit;
+        
+        let whereClause = {};
+        if (search) {
+            whereClause = {
+                [sequelize.Op.or]: [
+                    { nom: { [sequelize.Op.like]: `%${search}%` } },
+                    { email: { [sequelize.Op.like]: `%${search}%` } }
+                ]
+            };
+        }
+        
+        const users = await User.findAndCountAll({
+            where: whereClause,
+            attributes: { exclude: ['mot_passe'] },
+            order: [['created_at', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+        
+        res.json({
+            users: users.rows,
+            total: users.count,
+            page: parseInt(page),
+            totalPages: Math.ceil(users.count / limit)
+        });
+    } catch (error) {
+        console.error('Admin get users error:', error);
+        res.status(500).json({ message: "Error fetching users" });
+    }
+});
+
+// Admin: Block/Unblock user
+app.patch("/admin/users/:userId/block", adminAuth, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { blocked } = req.body;
+        
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Prevent admin from blocking themselves
+        if (user.id === req.user.id) {
+            return res.status(400).json({ message: "Cannot block yourself" });
+        }
+        
+        await user.update({ blocked: blocked });
+        
+        res.json({ 
+            message: `User ${blocked ? 'blocked' : 'unblocked'} successfully`,
+            user: {
+                id: user.id,
+                nom: user.nom,
+                email: user.email,
+                blocked: user.blocked
+            }
+        });
+    } catch (error) {
+        console.error('Block user error:', error);
+        res.status(500).json({ message: "Error updating user" });
+    }
+});
+
+// Admin: Reset user password
+app.post("/admin/users/:userId/reset-password", adminAuth, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { newPassword } = req.body;
+        
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
+        }
+        
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await user.update({ mot_passe: hashedPassword });
+        
+        res.json({ message: "Password reset successfully" });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: "Error resetting password" });
+    }
+});
+
+// Admin: Get user details
+app.get("/admin/users/:userId", adminAuth, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findByPk(userId, {
+            attributes: { exclude: ['mot_passe'] }
+        });
+        
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Get user details error:', error);
+        res.status(500).json({ message: "Error fetching user details" });
+    }
 });
 
 // Register endpoint
@@ -103,27 +201,21 @@ app.post("/auth/register", async (req, res) => {
         }
 
         // Check if user exists
-        const userExists = await Utilisateur.findOne({ email });
+        const userExists = await User.findOne({ where: { email } });
         if (userExists) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(mot_passe, 10);
-
-        // Create new user
-        const newUser = new Utilisateur({
+        // Create new user (password will be hashed by the model hook)
+        const newUser = await User.create({
             nom,
             email,
-            mot_passe: hashedPassword
+            mot_passe
         });
-
-        // Save user
-        const savedUser = await newUser.save();
         
         // Generate token
         const token = jwt.sign(
-            { id: savedUser._id, email: savedUser.email },
+            { id: newUser.id, email: newUser.email },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -132,9 +224,9 @@ app.post("/auth/register", async (req, res) => {
             message: "User registered successfully",
             token,
             user: {
-                id: savedUser._id,
-                nom: savedUser.nom,
-                email: savedUser.email
+                id: newUser.id,
+                nom: newUser.nom,
+                email: newUser.email
             }
         });
     } catch (error) {
@@ -154,20 +246,20 @@ app.post("/auth/login", async (req, res) => {
         }
 
         // Find user
-        const user = await Utilisateur.findOne({ email });
+        const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
 
         // Verify password
-        const isValidPassword = await bcrypt.compare(mot_passe, user.mot_passe);
+        const isValidPassword = await user.comparePassword(mot_passe);
         if (!isValidPassword) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
 
         // Generate token
         const token = jwt.sign(
-            { id: user._id, email: user.email },
+            { id: user.id, email: user.email },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -176,7 +268,7 @@ app.post("/auth/login", async (req, res) => {
             message: "Login successful",
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 nom: user.nom,
                 email: user.email
             }
@@ -193,78 +285,46 @@ app.post("/auth/forgot-password", async (req, res) => {
         const { email } = req.body;
 
         // Find user
-        const user = await Utilisateur.findOne({ email });
+        const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(404).json({ message: "Email not found" });
         }
 
-        // Generate reset token
-        const resetToken = jwt.sign(
-            { id: user._id },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-
-        // In a real application, you would:
-        // 1. Save the reset token to the user document
-        // 2. Send an email with the reset link
-        // For now, we'll just return the token
-        res.json({
-            message: "Password reset instructions sent",
-            resetToken
-        });
+        // In a real application, you would send a password reset email here
+        // For now, we'll just return a success message
+        res.json({ message: "Password reset instructions sent to your email" });
     } catch (error) {
         console.error('Forgot password error:', error);
         res.status(500).json({ message: "Error processing request" });
     }
 });
 
-// Reset password endpoint
-app.post("/auth/reset-password", async (req, res) => {
-    try {
-        const { token, newPassword } = req.body;
-
-        // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await Utilisateur.findById(decoded.id);
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        // Update password
-        user.mot_passe = hashedPassword;
-        await user.save();
-
-        res.json({ message: "Password reset successful" });
-    } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ message: "Error resetting password" });
-    }
-});
-
-// Get user profile endpoint
-app.get("/auth/profile", async (req, res) => {
+// Verify token endpoint
+app.get("/auth/verify", async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
+        
         if (!token) {
             return res.status(401).json({ message: "No token provided" });
         }
 
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await Utilisateur.findById(decoded.id).select('-mot_passe');
-
+        const user = await User.findByPk(decoded.id);
+        
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.status(401).json({ message: "Invalid token" });
         }
 
-        res.json(user);
+        res.json({
+            user: {
+                id: user.id,
+                nom: user.nom,
+                email: user.email
+            }
+        });
     } catch (error) {
-        console.error('Profile error:', error);
-        res.status(500).json({ message: "Error fetching profile" });
+        console.error('Token verification error:', error);
+        res.status(401).json({ message: "Invalid token" });
     }
 });
 

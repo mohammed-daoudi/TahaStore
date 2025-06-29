@@ -1,182 +1,236 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const Utilisateur = require('../auth-service/Utilisateur');
-const Produit = require('../produit-service/Produit');
-const Commande = require('../commande-service/Commande');
-
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/ecommerce";
-
-// Sample data
-const sampleUsers = [
-    {
-        nom: "Admin User",
-        email: "admin@example.com",
-        mot_passe: "admin123",
-        role: "admin",
-        telephone: "0123456789",
-        adresses: [{
-            rue: "123 Admin Street",
-            ville: "Paris",
-            codePostal: "75001",
-            pays: "France",
-            estParDefaut: true
-        }]
-    },
-    {
-        nom: "John Doe",
-        email: "john@example.com",
-        mot_passe: "password123",
-        telephone: "0987654321",
-        adresses: [{
-            rue: "456 Main Street",
-            ville: "Lyon",
-            codePostal: "69001",
-            pays: "France",
-            estParDefaut: true
-        }]
-    }
-];
-
-const sampleProducts = [
-    {
-        nom: "Smartphone XYZ",
-        description: "Latest smartphone with amazing features",
-        descriptionCourte: "High-end smartphone",
-        prix: 799.99,
-        categorie: "Electronics",
-        sousCategories: ["Smartphones", "Mobile Devices"],
-        marque: "TechBrand",
-        images: [
-            "https://example.com/phone1.jpg",
-            "https://example.com/phone2.jpg"
-        ],
-        stock: 50,
-        sku: "PHN-001",
-        tags: ["smartphone", "mobile", "tech"],
-        caracteristiques: {
-            "Screen": "6.5 inch OLED",
-            "RAM": "8GB",
-            "Storage": "128GB"
-        }
-    },
-    {
-        nom: "Laptop Pro",
-        description: "Professional laptop for work and gaming",
-        descriptionCourte: "High-performance laptop",
-        prix: 1299.99,
-        categorie: "Electronics",
-        sousCategories: ["Laptops", "Computers"],
-        marque: "TechBrand",
-        images: [
-            "https://example.com/laptop1.jpg",
-            "https://example.com/laptop2.jpg"
-        ],
-        stock: 30,
-        sku: "LPT-001",
-        tags: ["laptop", "computer", "tech"],
-        caracteristiques: {
-            "Processor": "Intel i7",
-            "RAM": "16GB",
-            "Storage": "512GB SSD"
-        }
-    }
-];
+const { getSequelize } = require('../database/config');
+const { initializeModels } = require('../database/models');
 
 const seedDatabase = async () => {
-    try {
-        // Connect to MongoDB with retry logic
-        let retries = 5;
-        while (retries > 0) {
-            try {
-                await mongoose.connect(MONGODB_URI, {
-                    useNewUrlParser: true,
-                    useUnifiedTopology: true,
-                    serverSelectionTimeoutMS: 5000
-                });
-                console.log('Connected to MongoDB');
-                break;
-            } catch (error) {
-                retries--;
-                if (retries === 0) {
-                    throw new Error('Failed to connect to MongoDB after multiple attempts');
-                }
-                console.log(`Failed to connect to MongoDB. Retrying... (${retries} attempts left)`);
-                await new Promise(resolve => setTimeout(resolve, 5000));
-            }
-        }
+  try {
+    console.log('🌱 Seeding database with sample data...');
+    
+    // Get database connection and models
+    const sequelize = await getSequelize();
+    const models = await initializeModels(sequelize);
+    
+    // Create sample users
+    console.log('Creating sample users...');
+    const users = await models.User.bulkCreate([
+      {
+        nom: 'John Doe',
+        email: 'john@example.com',
+        mot_passe: 'password123',
+        telephone: '+1234567890',
+        role: 'client'
+      },
+      {
+        nom: 'Jane Smith',
+        email: 'jane@example.com',
+        mot_passe: 'password123',
+        telephone: '+1234567891',
+        role: 'admin'
+      },
+      {
+        nom: 'Admin User',
+        email: 'admin@shopease.com',
+        mot_passe: 'admin123',
+        telephone: '+1234567892',
+        role: 'admin'
+      }
+    ]);
+    console.log(`✅ Created ${users.length} users`);
 
-        // Clear existing data
-        console.log('Clearing existing data...');
-        await Promise.all([
-            Utilisateur.deleteMany({}),
-            Produit.deleteMany({}),
-            Commande.deleteMany({})
-        ]);
-        console.log('Cleared existing data');
+    // Create sample products
+    console.log('Creating sample products...');
+    const products = await models.Product.bulkCreate([
+      {
+        nom: 'Wireless Headphones',
+        description: 'Experience premium sound quality with our wireless headphones. Featuring active noise cancellation, comfortable over-ear design, and long battery life.',
+        prix: 99.99,
+        prix_reduit: 79.99,
+        categorie: 'Electronics',
+        sous_categorie: 'Audio',
+        marque: 'AudioTech',
+        images: [
+          'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/577769/pexels-photo-577769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/164710/pexels-photo-164710.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
+        ],
+        stock: 15,
+        poids: 250,
+        dimensions: { longueur: 20, largeur: 15, hauteur: 8 },
+        couleurs: ['Black', 'White', 'Blue'],
+        tailles: ['One Size'],
+        tags: ['wireless', 'noise-cancellation', 'bluetooth'],
+        note_moyenne: 4.7,
+        nombre_avis: 124,
+        actif: true,
+        en_vedette: true,
+        sku: 'WH-001',
+        meta_titre: 'Wireless Headphones - Premium Sound Quality',
+        meta_description: 'Experience premium sound quality with our wireless headphones featuring active noise cancellation and long battery life.'
+      },
+      {
+        nom: 'Smart Watch',
+        description: 'Track your fitness and stay connected with this smartwatch. Features activity tracking, heart rate monitoring, and smartphone notifications.',
+        prix: 159.99,
+        prix_reduit: 129.99,
+        categorie: 'Electronics',
+        sous_categorie: 'Wearables',
+        marque: 'FitTech',
+        images: [
+          'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/267394/pexels-photo-267394.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/393047/pexels-photo-393047.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
+        ],
+        stock: 10,
+        poids: 45,
+        dimensions: { longueur: 4, largeur: 4, hauteur: 1 },
+        couleurs: ['Silver', 'Black', 'Rose Gold'],
+        tailles: ['42mm', '46mm'],
+        tags: ['smartwatch', 'fitness', 'health'],
+        note_moyenne: 4.5,
+        nombre_avis: 89,
+        actif: true,
+        en_vedette: true,
+        sku: 'SW-001',
+        meta_titre: 'Smart Watch - Fitness Tracking & Connectivity',
+        meta_description: 'Track your fitness and stay connected with this smartwatch featuring activity tracking and heart rate monitoring.'
+      },
+      {
+        nom: 'Desk Lamp',
+        description: 'Adjustable desk lamp with multiple brightness levels. Perfect for your home office or study area.',
+        prix: 49.99,
+        categorie: 'Home',
+        sous_categorie: 'Lighting',
+        marque: 'LuxLight',
+        images: [
+          'https://images.pexels.com/photos/4050304/pexels-photo-4050304.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/7000506/pexels-photo-7000506.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/943257/pexels-photo-943257.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
+        ],
+        stock: 25,
+        poids: 1200,
+        dimensions: { longueur: 30, largeur: 15, hauteur: 50 },
+        couleurs: ['White', 'Black'],
+        tailles: ['Standard'],
+        tags: ['desk', 'lamp', 'adjustable'],
+        note_moyenne: 4.3,
+        nombre_avis: 56,
+        actif: true,
+        en_vedette: false,
+        sku: 'DL-001',
+        meta_titre: 'Adjustable Desk Lamp - Perfect for Home Office',
+        meta_description: 'Adjustable desk lamp with multiple brightness levels, perfect for your home office or study area.'
+      },
+      {
+        nom: 'Coffee Maker',
+        description: 'Programmable coffee maker for your perfect morning brew. Features multiple brew strengths and a built-in grinder.',
+        prix: 79.99,
+        prix_reduit: 59.99,
+        categorie: 'Home',
+        sous_categorie: 'Kitchen',
+        marque: 'BrewMaster',
+        images: [
+          'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/1833651/pexels-photo-1833651.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+          'https://images.pexels.com/photos/6542420/pexels-photo-6542420.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
+        ],
+        stock: 12,
+        poids: 3500,
+        dimensions: { longueur: 25, largeur: 20, hauteur: 35 },
+        couleurs: ['Stainless Steel', 'Black'],
+        tailles: ['12-cup'],
+        tags: ['coffee', 'programmable', 'grinder'],
+        note_moyenne: 4.6,
+        nombre_avis: 78,
+        actif: true,
+        en_vedette: true,
+        sku: 'CM-001',
+        meta_titre: 'Programmable Coffee Maker - Perfect Morning Brew',
+        meta_description: 'Programmable coffee maker with multiple brew strengths and built-in grinder for your perfect morning brew.'
+      }
+    ]);
+    console.log(`✅ Created ${products.length} products`);
 
-        // Hash passwords and create users
-        console.log('Creating users...');
-        const hashedUsers = await Promise.all(
-            sampleUsers.map(async (user) => ({
-                ...user,
-                mot_passe: await bcrypt.hash(user.mot_passe, 10)
-            }))
-        );
-        const createdUsers = await Utilisateur.insertMany(hashedUsers);
-        console.log('Created users');
+    // Create sample reviews
+    console.log('Creating sample reviews...');
+    await models.Review.bulkCreate([
+      {
+        product_id: products[0].id,
+        user_id: users[0].id,
+        note: 5,
+        commentaire: 'Excellent sound quality and very comfortable!',
+        approuve: true
+      },
+      {
+        product_id: products[0].id,
+        user_id: users[1].id,
+        note: 4,
+        commentaire: 'Great headphones, battery life is impressive.',
+        approuve: true
+      },
+      {
+        product_id: products[1].id,
+        user_id: users[0].id,
+        note: 5,
+        commentaire: 'Perfect for tracking my workouts!',
+        approuve: true
+      }
+    ]);
+    console.log('✅ Created sample reviews');
 
-        // Create products
-        console.log('Creating products...');
-        const createdProducts = await Produit.insertMany(sampleProducts);
-        console.log('Created products');
+    // Create sample favorites
+    console.log('Creating sample favorites...');
+    await models.Favorite.bulkCreate([
+      {
+        user_id: users[0].id,
+        product_id: products[0].id
+      },
+      {
+        user_id: users[0].id,
+        product_id: products[1].id
+      },
+      {
+        user_id: users[1].id,
+        product_id: products[2].id
+      }
+    ]);
+    console.log('✅ Created sample favorites');
 
-        // Create sample orders
-        console.log('Creating orders...');
-        const sampleOrders = createdUsers.map(user => ({
-            utilisateurId: user._id,
-            numero: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            produits: createdProducts.map(product => ({
-                produitId: product._id,
-                nom: product.nom,
-                prix: product.prix,
-                quantite: Math.floor(Math.random() * 3) + 1,
-                sku: product.sku
-            })),
-            statut: 'confirmee',
-            sousTotal: createdProducts.reduce((sum, product) => sum + product.prix, 0),
-            fraisLivraison: 9.99,
-            taxe: 20.00,
-            total: createdProducts.reduce((sum, product) => sum + product.prix, 0) + 29.99,
-            paiement: {
-                methode: 'carte',
-                statut: 'complete',
-                montant: createdProducts.reduce((sum, product) => sum + product.prix, 0) + 29.99,
-                date: new Date(),
-                reference: `PAY-${Date.now()}`
-            },
-            livraison: {
-                methode: 'standard',
-                cout: 9.99,
-                adresse: user.adresses[0],
-                statut: 'livree',
-                numeroSuivi: `TRK-${Date.now()}`,
-                dateExpedition: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                dateLivraison: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-            }
-        }));
+    // Create sample addresses
+    console.log('Creating sample addresses...');
+    await models.Address.bulkCreate([
+      {
+        user_id: users[0].id,
+        type: 'livraison',
+        nom: 'Doe',
+        prenom: 'John',
+        adresse: '123 Main St',
+        complement: 'Apt 4B',
+        ville: 'New York',
+        code_postal: '10001',
+        pays: 'USA',
+        telephone: '+1234567890',
+        par_defaut: true
+      },
+      {
+        user_id: users[1].id,
+        type: 'livraison',
+        nom: 'Smith',
+        prenom: 'Jane',
+        adresse: '456 Oak Ave',
+        complement: '',
+        ville: 'Los Angeles',
+        code_postal: '90210',
+        pays: 'USA',
+        telephone: '+1234567891',
+        par_defaut: true
+      }
+    ]);
+    console.log('✅ Created sample addresses');
 
-        await Commande.insertMany(sampleOrders);
-        console.log('Created orders');
-
-        console.log('Database seeded successfully');
-        process.exit(0);
-    } catch (error) {
-        console.error('Error seeding database:', error);
-        process.exit(1);
-    } finally {
-        await mongoose.disconnect();
-    }
+    console.log(`✅ Database seeded successfully with ${users.length} users, ${products.length} products, and sample data`);
+  } catch (error) {
+    console.error('❌ Database seeding failed:', error);
+    throw error;
+  }
 };
 
-seedDatabase(); 
+module.exports = { seedDatabase }; 

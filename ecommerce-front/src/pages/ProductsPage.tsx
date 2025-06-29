@@ -394,15 +394,7 @@ function ProductsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Using mock data until we connect to the backend */}
-              {[
-                { id: '1', name: 'Wireless Headphones', price: 99.99, image: 'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Premium wireless headphones with noise cancellation.' },
-                { id: '2', name: 'Smart Watch', price: 159.99, image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Track your fitness and stay connected with this smartwatch.' },
-                { id: '3', name: 'Desk Lamp', price: 49.99, image: 'https://images.pexels.com/photos/4050304/pexels-photo-4050304.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Adjustable desk lamp with multiple brightness levels.' },
-                { id: '4', name: 'Coffee Maker', price: 79.99, image: 'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Programmable coffee maker for your perfect morning brew.' },
-                { id: '5', name: 'Bluetooth Speaker', price: 69.99, image: 'https://images.pexels.com/photos/3395251/pexels-photo-3395251.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Powerful portable speaker with deep bass.' },
-                { id: '6', name: 'Leather Wallet', price: 39.99, image: 'https://images.pexels.com/photos/2079438/pexels-photo-2079438.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Genuine leather wallet with RFID protection.' },
-              ].map((product) => (
+              {products.map((product) => (
                 <ProductCard key={product.id} {...product} />
               ))}
             </div>

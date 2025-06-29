@@ -137,67 +137,6 @@ function OrdersPage() {
     fetchOrders();
   }, [user]);
 
-  // Mock orders for display until connected to backend
-  const mockOrders: Order[] = [
-    {
-      id: 'ORD-12345',
-      date: '2025-01-15T12:00:00Z',
-      status: 'delivered',
-      tracking: {
-        status: 'delivered',
-        lastUpdated: '2025-01-15T12:00:00Z',
-        estimatedDelivery: '2025-01-20T12:00:00Z',
-        trackingNumber: '1234567890',
-        carrier: 'UPS',
-        location: 'New York',
-        notes: 'Order delivered successfully'
-      },
-      totalAmount: 159.97,
-      items: [
-        {
-          productId: '1',
-          name: 'Wireless Headphones',
-          price: 99.99,
-          quantity: 1,
-          image: 'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        },
-        {
-          productId: '4',
-          name: 'Coffee Maker',
-          price: 79.99,
-          quantity: 1,
-          image: 'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        },
-      ],
-    },
-    {
-      id: 'ORD-12346',
-      date: '2025-01-10T15:30:00Z',
-      status: 'shipped',
-      tracking: {
-        status: 'shipped',
-        lastUpdated: '2025-01-10T15:30:00Z',
-        estimatedDelivery: '2025-01-15T15:30:00Z',
-        trackingNumber: '1234567891',
-        carrier: 'USPS',
-        location: 'Chicago',
-        notes: 'Order shipped successfully'
-      },
-      totalAmount: 69.99,
-      items: [
-        {
-          productId: '5',
-          name: 'Bluetooth Speaker',
-          price: 69.99,
-          quantity: 1,
-          image: 'https://images.pexels.com/photos/3395251/pexels-photo-3395251.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        },
-      ],
-    },
-  ];
-
-  const displayOrders = orders.length > 0 ? orders : mockOrders;
-  
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -219,7 +158,7 @@ function OrdersPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">My Orders</h1>
       
-      {displayOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
             <ShoppingBag className="h-full w-full" />
@@ -236,7 +175,7 @@ function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {displayOrders.map((order) => (
+          {orders.map((order) => (
             <div key={order.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="bg-gray-50 px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>

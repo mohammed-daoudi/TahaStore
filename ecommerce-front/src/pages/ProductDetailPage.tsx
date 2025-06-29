@@ -127,49 +127,6 @@ function ProductDetailPage() {
     );
   }
 
-  // Using mock data until we connect to the backend
-  const mockProduct = {
-    id: id,
-    name: 'Wireless Headphones',
-    price: 99.99,
-    description: 'Experience premium sound quality with our wireless headphones. Featuring active noise cancellation, comfortable over-ear design, and long battery life. Perfect for music lovers, travelers, and professionals who want immersive audio without the hassle of wires.',
-    features: [
-      'Active noise cancellation',
-      '30-hour battery life',
-      'Premium sound quality',
-      'Comfortable over-ear design',
-      'Bluetooth 5.0 connectivity',
-      'Built-in microphone for calls',
-    ],
-    specifications: {
-      brand: 'AudioTech',
-      model: 'SoundPro X7',
-      color: 'Black',
-      connectivity: 'Bluetooth 5.0',
-      batteryLife: '30 hours',
-      weight: '250g',
-    },
-    stock: 15,
-    rating: 4.7,
-    reviewCount: 124,
-    images: [
-      'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/577769/pexels-photo-577769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/164710/pexels-photo-164710.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    ],
-    category: 'Electronics',
-  };
-
-  const mockRelatedProducts = [
-    { id: '2', name: 'Smart Watch', price: 159.99, image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Track your fitness and stay connected with this smartwatch.' },
-    { id: '5', name: 'Bluetooth Speaker', price: 69.99, image: 'https://images.pexels.com/photos/3395251/pexels-photo-3395251.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'Powerful portable speaker with deep bass.' },
-    { id: '8', name: 'Wireless Earbuds', price: 129.99, image: 'https://images.pexels.com/photos/3394665/pexels-photo-3394665.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', description: 'True wireless earbuds with amazing sound quality.' },
-  ];
-
-  // Use our product data or the mock data if not available
-  const displayProduct = product || mockProduct;
-  const displayRelatedProducts = relatedProducts.length > 0 ? relatedProducts : mockRelatedProducts;
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Breadcrumbs */}
@@ -189,16 +146,16 @@ function ProductDetailPage() {
           </li>
           <li>
             <Link 
-              to={`/products?category=${displayProduct.category?.toLowerCase()}`} 
+              to={`/products?category=${product.category?.toLowerCase()}`} 
               className="hover:text-blue-900"
             >
-              {displayProduct.category}
+              {product.category}
             </Link>
           </li>
           <li>
             <span>/</span>
           </li>
-          <li className="text-gray-700 font-medium truncate">{displayProduct.name}</li>
+          <li className="text-gray-700 font-medium truncate">{product.name}</li>
         </ol>
       </nav>
 
@@ -208,14 +165,14 @@ function ProductDetailPage() {
         <div>
           <div className="bg-white rounded-lg overflow-hidden mb-4">
             <img
-              src={displayProduct.images[selectedImage]}
-              alt={displayProduct.name}
+              src={product.images[selectedImage]}
+              alt={product.name}
               className="w-full h-full object-contain aspect-square"
             />
           </div>
-          {displayProduct.images.length > 1 && (
+          {product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
-              {displayProduct.images.map((image: string, index: number) => (
+              {product.images.map((image: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
@@ -227,7 +184,7 @@ function ProductDetailPage() {
                 >
                   <img
                     src={image}
-                    alt={`${displayProduct.name} view ${index + 1}`}
+                    alt={`${product.name} view ${index + 1}`}
                     className="w-full h-full object-cover aspect-square"
                   />
                 </button>
@@ -238,7 +195,7 @@ function ProductDetailPage() {
 
         {/* Product Info */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayProduct.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
           
           {/* Rating */}
           <div className="flex items-center mb-4">
@@ -248,7 +205,7 @@ function ProductDetailPage() {
                   key={i}
                   xmlns="http://www.w3.org/2000/svg"
                   className={`h-5 w-5 ${
-                    i < Math.floor(displayProduct.rating) ? 'text-yellow-400' : 'text-gray-300'
+                    i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'
                   }`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
@@ -258,23 +215,23 @@ function ProductDetailPage() {
               ))}
             </div>
             <span className="ml-2 text-gray-600">
-              {displayProduct.rating} ({displayProduct.reviewCount} reviews)
+              {product.rating} ({product.reviewCount} reviews)
             </span>
             <span className="mx-2 text-gray-300">|</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-              displayProduct.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}>
-              {displayProduct.stock > 0 ? 'In Stock' : 'Out of Stock'}
+              {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
             </span>
           </div>
           
           {/* Price */}
           <div className="text-2xl font-bold text-gray-900 mb-4">
-            ${displayProduct.price.toFixed(2)}
+            ${product.price.toFixed(2)}
           </div>
           
           {/* Description */}
-          <p className="text-gray-700 mb-6">{displayProduct.description}</p>
+          <p className="text-gray-700 mb-6">{product.description}</p>
           
           {/* Add to Cart */}
           <div className="flex items-center mb-6">
@@ -303,7 +260,7 @@ function ProductDetailPage() {
               variant="primary"
               fullWidth
               onClick={handleAddToCart}
-              disabled={!displayProduct.stock}
+              disabled={!product.stock}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
               Add to Cart
@@ -372,7 +329,7 @@ function ProductDetailPage() {
         <div className="py-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Product Features</h3>
           <ul className="list-disc pl-5 space-y-2 text-gray-700">
-            {displayProduct.features.map((feature: string, index: number) => (
+            {product.features.map((feature: string, index: number) => (
               <li key={index}>{feature}</li>
             ))}
           </ul>
@@ -383,7 +340,7 @@ function ProductDetailPage() {
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-6">You May Also Like</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayRelatedProducts.map((product) => (
+          {relatedProducts.map((product) => (
             <ProductCard key={product.id} {...product} />
           ))}
         </div>
@@ -393,8 +350,8 @@ function ProductDetailPage() {
       <div className="mt-8">
         <SocialShare
           url={window.location.href}
-          title={displayProduct.name}
-          description={displayProduct.description}
+          title={product.name}
+          description={product.description}
         />
       </div>
     </div>

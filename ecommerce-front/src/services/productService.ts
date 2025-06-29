@@ -1,257 +1,177 @@
-// This is a mock service that would connect to your product-service backend
-// Replace with actual API calls when connecting to your backend
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:4000';
 
 interface Product {
-  id: string;
-  name: string;
-  price: number;
+  id: number;
+  nom: string;
+  prix: number;
   description: string;
+  description_courte?: string;
   images: string[];
-  category: string;
+  categorie: string;
+  marque?: string;
   stock: number;
-  rating: number;
-  reviewCount: number;
-  features: string[];
-  specifications: Record<string, string>;
+  note_moyenne: number;
+  nombre_avis: number;
+  caracteristiques?: Record<string, string>;
+  tags?: string[];
+  est_actif: boolean;
+  est_en_promo: boolean;
+  prix_promo?: number;
 }
 
-// Mock product data
-const mockProducts = [
-  {
-    id: '1',
-    name: 'Wireless Headphones',
-    price: 99.99,
-    description: 'Experience premium sound quality with our wireless headphones. Featuring active noise cancellation, comfortable over-ear design, and long battery life.',
-    images: [
-      'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/577769/pexels-photo-577769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/164710/pexels-photo-164710.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    ],
-    category: 'Electronics',
-    stock: 15,
-    rating: 4.7,
-    reviewCount: 124,
-    features: [
-      'Active noise cancellation',
-      '30-hour battery life',
-      'Premium sound quality',
-      'Comfortable over-ear design',
-      'Bluetooth 5.0 connectivity',
-      'Built-in microphone for calls',
-    ],
-    specifications: {
-      brand: 'AudioTech',
-      model: 'SoundPro X7',
-      color: 'Black',
-      connectivity: 'Bluetooth 5.0',
-      batteryLife: '30 hours',
-      weight: '250g',
-    },
-  },
-  {
-    id: '2',
-    name: 'Smart Watch',
-    price: 159.99,
-    description: 'Track your fitness and stay connected with this smartwatch. Features activity tracking, heart rate monitoring, and smartphone notifications.',
-    images: [
-      'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/267394/pexels-photo-267394.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/393047/pexels-photo-393047.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    ],
-    category: 'Electronics',
-    stock: 10,
-    rating: 4.5,
-    reviewCount: 89,
-    features: [
-      'Activity tracking',
-      'Heart rate monitoring',
-      'Sleep tracking',
-      'Smartphone notifications',
-      'Water resistant (50m)',
-      '7-day battery life',
-    ],
-    specifications: {
-      brand: 'FitTech',
-      model: 'Pulse Pro',
-      color: 'Silver',
-      connectivity: 'Bluetooth 5.0',
-      batteryLife: '7 days',
-      weight: '45g',
-    },
-  },
-  {
-    id: '3',
-    name: 'Desk Lamp',
-    price: 49.99,
-    description: 'Adjustable desk lamp with multiple brightness levels. Perfect for your home office or study area.',
-    images: [
-      'https://images.pexels.com/photos/4050304/pexels-photo-4050304.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/7000506/pexels-photo-7000506.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/943257/pexels-photo-943257.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    ],
-    category: 'Home',
-    stock: 25,
-    rating: 4.3,
-    reviewCount: 56,
-    features: [
-      'Adjustable arm',
-      '3 color temperature modes',
-      '5 brightness levels',
-      'Touch controls',
-      'USB charging port',
-      'Timer function',
-    ],
-    specifications: {
-      brand: 'LuxLight',
-      model: 'FlexBeam Pro',
-      color: 'White',
-      powerSource: 'Corded Electric',
-      wattage: '10W',
-      weight: '1.2kg',
-    },
-  },
-  {
-    id: '4',
-    name: 'Coffee Maker',
-    price: 79.99,
-    description: 'Programmable coffee maker for your perfect morning brew. Features multiple brew strengths and a built-in grinder.',
-    images: [
-      'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/1833651/pexels-photo-1833651.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      'https://images.pexels.com/photos/6542420/pexels-photo-6542420.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    ],
-    category: 'Home',
-    stock: 12,
-    rating: 4.6,
-    reviewCount: 78,
-    features: [
-      'Programmable timer',
-      'Built-in grinder',
-      'Multiple brew strengths',
-      '12-cup capacity',
-      'Keep warm function',
-      'Auto shut-off',
-    ],
-    specifications: {
-      brand: 'BrewMaster',
-      model: 'Grind & Brew Pro',
-      color: 'Stainless Steel',
-      capacity: '12 cups',
-      wattage: '1000W',
-      weight: '3.5kg',
-    },
-  },
-];
+interface Review {
+  id: number;
+  note: number;
+  commentaire?: string;
+  user: {
+    nom: string;
+  };
+  created_at: string;
+}
 
 export const productService = {
-  async getProducts(params?: Record<string, string>): Promise<any[]> {
-    // In a real app, you would make an API call to your product-service
-    // return api.get('/products', { params });
-    
-    // For development, we'll return mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let filteredProducts = [...mockProducts];
-        
-        if (params) {
-          // Filter by category
-          if (params.category) {
-            filteredProducts = filteredProducts.filter(
-              p => p.category.toLowerCase() === params.category.toLowerCase()
-            );
-          }
-          
-          // Filter by search term
-          if (params.search) {
-            const searchTerm = params.search.toLowerCase();
-            filteredProducts = filteredProducts.filter(
-              p => p.name.toLowerCase().includes(searchTerm) || 
-                   p.description.toLowerCase().includes(searchTerm)
-            );
-          }
-          
-          // Filter by price range
-          if (params.minPrice) {
-            filteredProducts = filteredProducts.filter(
-              p => p.price >= parseFloat(params.minPrice)
-            );
-          }
-          
-          if (params.maxPrice) {
-            filteredProducts = filteredProducts.filter(
-              p => p.price <= parseFloat(params.maxPrice)
-            );
-          }
-          
-          // Sort products
-          if (params.sort) {
-            switch (params.sort) {
-              case 'price_asc':
-                filteredProducts.sort((a, b) => a.price - b.price);
-                break;
-              case 'price_desc':
-                filteredProducts.sort((a, b) => b.price - a.price);
-                break;
-              case 'popular':
-                filteredProducts.sort((a, b) => b.rating - a.rating);
-                break;
-              default: // 'newest'
-                // No change to order
-                break;
-            }
-          }
-        }
-        
-        resolve(filteredProducts);
-      }, 500);
-    });
+  async getProducts(params?: Record<string, string>): Promise<Product[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params) {
+        if (params.category) queryParams.append('category', params.category);
+        if (params.search) queryParams.append('search', params.search);
+        if (params.minPrice) queryParams.append('minPrice', params.minPrice);
+        if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice);
+        if (params.sort) queryParams.append('sort', params.sort);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/produit/liste?${queryParams}`);
+      
+      // Parse JSON fields
+      return response.data.map((product: any) => ({
+        ...product,
+        images: product.images ? JSON.parse(product.images) : [],
+        caracteristiques: product.caracteristiques ? JSON.parse(product.caracteristiques) : {},
+        tags: product.tags ? JSON.parse(product.tags) : []
+      }));
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      throw error;
+    }
   },
 
   async getProductById(id: string): Promise<Product | null> {
-    // In a real app, you would make an API call to your product-service
-    // return api.get(`/products/${id}`);
-    
-    // For development, we'll return mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const product = mockProducts.find(p => p.id === id);
-        resolve(product || null);
-      }, 500);
-    });
+    try {
+      const response = await axios.get(`${API_BASE_URL}/produit/${id}`);
+      
+      const product = response.data;
+      return {
+        ...product,
+        images: product.images ? JSON.parse(product.images) : [],
+        caracteristiques: product.caracteristiques ? JSON.parse(product.caracteristiques) : {},
+        tags: product.tags ? JSON.parse(product.tags) : []
+      };
+    } catch (error) {
+      console.error('Failed to fetch product:', error);
+      return null;
+    }
   },
 
-  async getFeaturedProducts(): Promise<any[]> {
-    // In a real app, you would make an API call to your product-service
-    // return api.get('/products/featured');
-    
-    // For development, we'll return mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Just return the first 4 products as featured
-        resolve(mockProducts.slice(0, 4));
-      }, 500);
-    });
+  async getFeaturedProducts(): Promise<Product[]> {
+    try {
+      // Get first 4 products as featured
+      const response = await axios.get(`${API_BASE_URL}/produit/liste?sort=popular`);
+      
+      const products = response.data.slice(0, 4);
+      return products.map((product: any) => ({
+        ...product,
+        images: product.images ? JSON.parse(product.images) : [],
+        caracteristiques: product.caracteristiques ? JSON.parse(product.caracteristiques) : {},
+        tags: product.tags ? JSON.parse(product.tags) : []
+      }));
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+      throw error;
+    }
   },
 
-  async getRelatedProducts(productId: string): Promise<any[]> {
-    // In a real app, you would make an API call to your product-service
-    // return api.get(`/products/${productId}/related`);
-    
-    // For development, we'll return mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const currentProduct = mockProducts.find(p => p.id === productId);
-        
-        if (currentProduct) {
-          // Return products in the same category, excluding the current one
-          const related = mockProducts.filter(
-            p => p.category === currentProduct.category && p.id !== currentProduct.id
-          );
-          resolve(related);
-        } else {
-          resolve([]);
-        }
-      }, 500);
-    });
+  async getRelatedProducts(productId: string): Promise<Product[]> {
+    try {
+      const product = await this.getProductById(productId);
+      if (!product) return [];
+      
+      // Get products in the same category
+      const response = await axios.get(`${API_BASE_URL}/produit/liste?category=${product.categorie}`);
+      
+      const products = response.data.filter((p: any) => p.id != productId).slice(0, 3);
+      return products.map((product: any) => ({
+        ...product,
+        images: product.images ? JSON.parse(product.images) : [],
+        caracteristiques: product.caracteristiques ? JSON.parse(product.caracteristiques) : {},
+        tags: product.tags ? JSON.parse(product.tags) : []
+      }));
+    } catch (error) {
+      console.error('Failed to fetch related products:', error);
+      return [];
+    }
   },
+
+  async addToFavorites(userId: number, productId: number): Promise<void> {
+    try {
+      await axios.post(`${API_BASE_URL}/favorites`, {
+        userId,
+        productId
+      });
+    } catch (error) {
+      console.error('Failed to add to favorites:', error);
+      throw error;
+    }
+  },
+
+  async removeFromFavorites(userId: number, productId: number): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE_URL}/favorites/${userId}/${productId}`);
+    } catch (error) {
+      console.error('Failed to remove from favorites:', error);
+      throw error;
+    }
+  },
+
+  async getFavorites(userId: number): Promise<Product[]> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/favorites/${userId}`);
+      
+      return response.data.map((favorite: any) => ({
+        ...favorite.product,
+        images: favorite.product.images ? JSON.parse(favorite.product.images) : [],
+        caracteristiques: favorite.product.caracteristiques ? JSON.parse(favorite.product.caracteristiques) : {},
+        tags: favorite.product.tags ? JSON.parse(favorite.product.tags) : []
+      }));
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      throw error;
+    }
+  },
+
+  async checkFavoriteStatus(userId: number, productId: number): Promise<boolean> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/favorites/${userId}/${productId}`);
+      return response.data.isFavorited;
+    } catch (error) {
+      console.error('Failed to check favorite status:', error);
+      return false;
+    }
+  },
+
+  async addReview(productId: number, userId: number, note: number, commentaire?: string): Promise<void> {
+    try {
+      await axios.post(`${API_BASE_URL}/produit/${productId}/reviews`, {
+        userId,
+        note,
+        commentaire
+      });
+    } catch (error) {
+      console.error('Failed to add review:', error);
+      throw error;
+    }
+  }
 };
