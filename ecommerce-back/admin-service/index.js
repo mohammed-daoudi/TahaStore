@@ -6,13 +6,35 @@ const jwt = require('jsonwebtoken');
 
 // Import database configuration and models
 const { sequelize, testConnection } = require('../database/config');
-const { Coupon, Contact, User } = require('../database/models');
+const { initializeModels } = require('../database/models');
 
 // JWT Secret
-const JWT_SECRET = "your-super-secret-jwt-key-change-this-in-production";
+const JWT_SECRET = "shopease_secret";
 
 app.use(cors());
 app.use(express.json());
+
+// Initialize models
+let Coupon, Contact, User;
+
+const initializeDatabase = async () => {
+    try {
+        await testConnection();
+        console.log('✅ Admin Service: Successfully connected to MySQL database.');
+        
+        // Initialize models
+        const models = await initializeModels(sequelize);
+        Coupon = models.Coupon;
+        Contact = models.Contact;
+        User = models.User;
+        
+        console.log('✅ Admin Service: Models initialized successfully.');
+    } catch (error) {
+        console.error('❌ Admin Service: Database connection error:', error);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(initializeDatabase, 5000);
+    }
+};
 
 // Admin authentication middleware
 function adminAuth(req, res, next) {
@@ -27,18 +49,6 @@ function adminAuth(req, res, next) {
   });
 }
 
-// Initialize database connection
-const initializeDatabase = async () => {
-    try {
-        await testConnection();
-        console.log('✅ Admin Service: Successfully connected to MySQL database.');
-    } catch (error) {
-        console.error('❌ Admin Service: Database connection error:', error);
-        console.log('Retrying connection in 5 seconds...');
-        setTimeout(initializeDatabase, 5000);
-    }
-};
-
 // Initial connection attempt
 initializeDatabase();
 
@@ -47,6 +57,10 @@ initializeDatabase();
 // Create coupon (admin only)
 app.post("/admin/coupons", adminAuth, async (req, res) => {
     try {
+        if (!Coupon) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { code, description, type, value, min_order_amount, max_uses, valid_from, valid_until } = req.body;
         
         // Check if coupon code already exists
@@ -77,6 +91,10 @@ app.post("/admin/coupons", adminAuth, async (req, res) => {
 // Get all coupons (admin only)
 app.get("/admin/coupons", adminAuth, async (req, res) => {
     try {
+        if (!Coupon) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { page = 1, limit = 20, active } = req.query;
         const offset = (page - 1) * limit;
         
@@ -108,6 +126,10 @@ app.get("/admin/coupons", adminAuth, async (req, res) => {
 // Update coupon (admin only)
 app.put("/admin/coupons/:id", adminAuth, async (req, res) => {
     try {
+        if (!Coupon) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { id } = req.params;
         const updates = req.body;
         
@@ -127,6 +149,10 @@ app.put("/admin/coupons/:id", adminAuth, async (req, res) => {
 // Delete coupon (admin only)
 app.delete("/admin/coupons/:id", adminAuth, async (req, res) => {
     try {
+        if (!Coupon) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { id } = req.params;
         
         const coupon = await Coupon.findByPk(id);
@@ -145,7 +171,11 @@ app.delete("/admin/coupons/:id", adminAuth, async (req, res) => {
 // Validate coupon (public endpoint)
 app.post("/coupons/validate", async (req, res) => {
     try {
-        const { code, orderAmount } = req.body;
+        if (!Coupon) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
+        const { code, orderAmount, existingDiscount = 0 } = req.body;
         
         const coupon = await Coupon.findOne({ 
             where: { 
@@ -168,24 +198,39 @@ app.post("/coupons/validate", async (req, res) => {
             return res.status(400).json({ message: "Coupon usage limit reached" });
         }
         
-        // Check minimum order amount
-        if (coupon.min_order_amount && orderAmount < coupon.min_order_amount) {
+        // Calculate the sale price (original amount minus existing discounts)
+        const salePrice = orderAmount - existingDiscount;
+        
+        // Check minimum order amount against sale price
+        if (coupon.min_order_amount && salePrice < coupon.min_order_amount) {
             return res.status(400).json({ 
-                message: `Minimum order amount required: $${coupon.min_order_amount}` 
+                message: `Minimum order amount required: $${coupon.min_order_amount} (after existing discounts)` 
+            });
+        }
+        
+        // Check maximum order amount against sale price (if applicable)
+        if (coupon.max_order_amount && salePrice > coupon.max_order_amount) {
+            return res.status(400).json({ 
+                message: `Maximum order amount allowed: $${coupon.max_order_amount} (after existing discounts)` 
             });
         }
         
         // Calculate discount
         let discountAmount = 0;
         if (coupon.type === 'percentage') {
-            discountAmount = (orderAmount * coupon.value) / 100;
+            discountAmount = (salePrice * coupon.value) / 100;
         } else {
             discountAmount = coupon.value;
         }
         
+        // Ensure discount doesn't exceed the sale price
+        const finalDiscountAmount = Math.min(discountAmount, salePrice);
+        
         res.json({
             coupon,
-            discountAmount: Math.min(discountAmount, orderAmount) // Don't discount more than order amount
+            discountAmount: finalDiscountAmount,
+            salePrice: salePrice,
+            finalAmount: salePrice - finalDiscountAmount
         });
     } catch (error) {
         console.error('Validate coupon error:', error);
@@ -198,6 +243,10 @@ app.post("/coupons/validate", async (req, res) => {
 // Submit contact form (public endpoint)
 app.post("/contact", async (req, res) => {
     try {
+        if (!Contact) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { nom, email, sujet, message, telephone } = req.body;
         
         const contact = await Contact.create({
@@ -223,6 +272,10 @@ app.post("/contact", async (req, res) => {
 // Get all contact inquiries (admin only)
 app.get("/admin/contacts", adminAuth, async (req, res) => {
     try {
+        if (!Contact) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { page = 1, limit = 20, statut, priorite } = req.query;
         const offset = (page - 1) * limit;
         
@@ -253,6 +306,10 @@ app.get("/admin/contacts", adminAuth, async (req, res) => {
 // Get contact by ID (admin only)
 app.get("/admin/contacts/:id", adminAuth, async (req, res) => {
     try {
+        if (!Contact) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { id } = req.params;
         
         const contact = await Contact.findByPk(id, {
@@ -273,6 +330,10 @@ app.get("/admin/contacts/:id", adminAuth, async (req, res) => {
 // Respond to contact (admin only)
 app.post("/admin/contacts/:id/respond", adminAuth, async (req, res) => {
     try {
+        if (!Contact) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { id } = req.params;
         const { reponse, statut } = req.body;
         
@@ -288,10 +349,7 @@ app.post("/admin/contacts/:id/respond", adminAuth, async (req, res) => {
             date_reponse: new Date()
         });
         
-        res.json({ 
-            message: "Response sent successfully",
-            contact
-        });
+        res.json({ message: "Response sent successfully", contact });
     } catch (error) {
         console.error('Respond to contact error:', error);
         res.status(400).json({ error: error.message });
@@ -301,6 +359,10 @@ app.post("/admin/contacts/:id/respond", adminAuth, async (req, res) => {
 // Update contact status (admin only)
 app.patch("/admin/contacts/:id/status", adminAuth, async (req, res) => {
     try {
+        if (!Contact) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const { id } = req.params;
         const { statut, priorite } = req.body;
         
@@ -327,6 +389,10 @@ app.patch("/admin/contacts/:id/status", adminAuth, async (req, res) => {
 // Get dashboard statistics (admin only)
 app.get("/admin/stats", adminAuth, async (req, res) => {
     try {
+        if (!User) {
+            return res.status(500).json({ message: "Models not initialized" });
+        }
+        
         const totalUsers = await User.count();
         const totalOrders = await require('../database/models').Order.count();
         const totalProducts = await require('../database/models').Product.count();

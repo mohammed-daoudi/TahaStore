@@ -1,3 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --glass-bg: rgba(255,255,255,0.15);
+  --glass-border: rgba(255,255,255,0.25);
+  --glass-blur: 8px;
+  --neon-blue: #00e6ff;
+  --neon-pink: #ff00ea;
+  --neon-purple: #a259ff;
+  --neon-teal: #00ffd0;
+  --neon-yellow: #fff500;
+}
+
+body {
+  font-family: 'Poppins', ui-sans-serif, system-ui;
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  min-height: 100vh;
+  transition: background 0.6s cubic-bezier(.4,0,.2,1);
+  color: white;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+  color: #e2e8f0;
+}
+
+/* Light mode styles */
+body:not(.dark) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #1a202c;
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.12);
+  border-radius: 1.25rem;
+}
+
+.dark .glass {
+  background: rgba(30,41,59,0.35);
+  border: 1px solid rgba(148,163,184,0.25);
+}
+
+.neon-text {
+  font-family: 'Orbitron', 'Poppins', ui-sans-serif;
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px var(--neon-blue), 0 0 16px var(--neon-pink);
+}
+
+.neon-glow {
+  box-shadow: 0 0 16px 2px var(--neon-blue), 0 0 32px 4px var(--neon-pink);
+}
+
+.glow-cta {
+  animation: glowPulse 2s infinite alternate;
+  box-shadow: 0 0 16px 2px var(--neon-pink), 0 0 32px 4px var(--neon-blue);
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 8px 2px var(--neon-pink), 0 0 16px 4px var(--neon-blue); }
+  100% { box-shadow: 0 0 32px 8px var(--neon-blue), 0 0 64px 16px var(--neon-pink); }
+}
+
+.animated-gradient {
+  background: linear-gradient(270deg, var(--neon-blue), var(--neon-pink), var(--neon-purple), var(--neon-teal), var(--neon-yellow), var(--neon-blue));
+  background-size: 1200% 1200%;
+  animation: gradientMove 12s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* For glassmorphism cards */
+.card-glass {
+  @apply glass shadow-glass;
+}
+
+/* For 3D tilt effect containers */
+.tilt-3d {
+  perspective: 1200px;
+}
+
+/* For Lottie/SVG animation containers */
+.lottie-anim {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Dark mode specific styles */
+.dark .bg-white {
+  background-color: #1e293b;
+}
+
+.dark .text-gray-900 {
+  color: #f1f5f9;
+}
+
+.dark .text-gray-700 {
+  color: #cbd5e1;
+}
+
+.dark .text-gray-500 {
+  color: #94a3b8;
+}
+
+.dark .border-gray-200 {
+  border-color: #334155;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1e293b;
+}
+
+.dark .bg-gray-100 {
+  background-color: #334155;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: #334155;
+}
+
+.dark .hover\:bg-gray-100:hover {
+  background-color: #475569;
+}

@@ -59,7 +59,7 @@ const AdminContact: React.FC = () => {
 
   const fetchContacts = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20'
@@ -94,7 +94,7 @@ const AdminContact: React.FC = () => {
     if (!selectedContact || !responseText.trim()) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4003/admin/contacts/${selectedContact.id}/respond`, {
         method: 'POST',
         headers: {
@@ -120,7 +120,7 @@ const AdminContact: React.FC = () => {
 
   const handleUpdateStatus = async (contactId: number, status: string, priority?: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const body: any = { statut: status };
       if (priority) body.priorite = priority;
       

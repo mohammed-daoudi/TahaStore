@@ -67,7 +67,7 @@ const AdminOrders: React.FC = () => {
 
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20'
@@ -97,7 +97,7 @@ const AdminOrders: React.FC = () => {
 
   const handleStatusUpdate = async (orderId: number, newStatus: string, trackingNumber?: string, carrier?: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4001/admin/commande/${orderId}/status`, {
         method: 'PATCH',
         headers: {

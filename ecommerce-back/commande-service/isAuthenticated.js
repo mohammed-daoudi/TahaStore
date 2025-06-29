@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../database/models');
 
-const JWT_SECRET = "your-super-secret-jwt-key-change-this-in-production";
+const JWT_SECRET = "shopease_secret";
 
 const isAuthenticated = async (req, res, next) => {
     try {

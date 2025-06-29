@@ -28,6 +28,9 @@ function CartItem({ id, name, price, quantity, image }: CartItemProps) {
     removeItem(id);
   };
 
+  // Ensure price is a number
+  const numericPrice = typeof price === 'number' ? price : parseFloat(price) || 0;
+
   return (
     <div className="flex items-center py-4 border-b border-gray-200">
       <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
@@ -42,7 +45,7 @@ function CartItem({ id, name, price, quantity, image }: CartItemProps) {
         <div>
           <div className="flex justify-between text-base font-medium text-gray-900">
             <h3>{name}</h3>
-            <p className="ml-4">${price.toFixed(2)}</p>
+            <p className="ml-4">${numericPrice.toFixed(2)}</p>
           </div>
         </div>
         <div className="flex flex-1 items-end justify-between text-sm">

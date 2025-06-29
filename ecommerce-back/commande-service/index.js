@@ -1,35 +1,26 @@
 const express = require("express");
 const app = express();
-const PORT = process.env.PORT_ONE || 4001;
+const PORT = process.env.PORT_THREE || 4001;
 const axios = require('axios');
 const isAuthenticated = require('./isAuthenticated');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 // Import database configuration and models
-const { sequelize, testConnection } = require('../database/config');
-const { Order, OrderItem, Product, User } = require('../database/models');
+const { getSequelize, testConnection } = require('../database/config');
+const { initializeModels } = require('../database/models');
 
 app.use(cors());
 app.use(express.json());
 
-// Admin authentication middleware
-function adminAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
-  const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.JWT_SECRET || 'shopease_secret', (err, user) => {
-    if (err) return res.status(403).json({ message: 'Invalid token' });
-    if (user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
-    req.user = user;
-    next();
-  });
-}
-
-// Initialize database connection
+// Initialize database connection and models
+let models = null;
+let sequelize = null;
 const initializeDatabase = async () => {
     try {
+        sequelize = await getSequelize();
         await testConnection();
+        models = await initializeModels(sequelize);
         console.log('✅ Order Service: Successfully connected to MySQL database.');
     } catch (error) {
         console.error('❌ Order Service: Database connection error:', error);
@@ -40,6 +31,37 @@ const initializeDatabase = async () => {
 
 // Initial connection attempt
 initializeDatabase();
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "Access token required" });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'shopease_secret', (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: "Invalid token" });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+// Admin authentication middleware
+const adminAuth = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'No token provided' });
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET || 'shopease_secret', (err, user) => {
+        if (err) return res.status(403).json({ message: 'Invalid token' });
+        if (user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+        req.user = user;
+        next();
+    });
+};
 
 // Calculate total price of an order
 function prixTotal(produits) {
@@ -77,7 +99,7 @@ function generateOrderNumber() {
 async function updateInventory(productIds, quantities) {
     try {
         for (let i = 0; i < productIds.length; i++) {
-            const product = await Product.findByPk(productIds[i]);
+            const product = await models.Product.findByPk(productIds[i]);
             if (product) {
                 const newStock = Math.max(0, product.stock - quantities[i]);
                 await product.update({ stock: newStock });
@@ -90,8 +112,12 @@ async function updateInventory(productIds, quantities) {
 }
 
 // Create order endpoint
-app.post("/commande/ajouter", isAuthenticated, async (req, res, next) => {
+app.post("/commande/ajouter", authenticateToken, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order, OrderItem, Product } = models;
         const { productIds, quantities, shippingAddress, paymentMethod, shippingMethod } = req.body;
         
         // Get products from product service
@@ -124,7 +150,7 @@ app.post("/commande/ajouter", isAuthenticated, async (req, res, next) => {
         // Create order
         const order = await Order.create({
             numero_commande: generateOrderNumber(),
-            user_id: req.user.id,
+            user_id: req.user.userId,
             statut: 'en_attente',
             sous_total: subtotal,
             frais_livraison: shippingCost,
@@ -161,24 +187,28 @@ app.post("/commande/ajouter", isAuthenticated, async (req, res, next) => {
                     as: 'items',
                     include: [{ model: Product, as: 'product' }]
                 },
-                { model: User, as: 'user', attributes: ['nom', 'email'] }
+                { model: models.User, as: 'user', attributes: ['nom', 'email'] }
             ]
         });
         
         res.status(201).json(completeOrder);
     } catch (error) {
         console.error('Create order error:', error);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ message: "Error creating order" });
     }
 });
 
 // Get user orders
-app.get("/commande/utilisateur/:userId", isAuthenticated, async (req, res, next) => {
+app.get("/commande/utilisateur/:userId", authenticateToken, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order, OrderItem, Product } = models;
         const { userId } = req.params;
-        
+
         // Verify user can only access their own orders
-        if (req.user.id != userId && req.user.role !== 'admin') {
+        if (req.user.userId != userId && req.user.role !== 'admin') {
             return res.status(403).json({ message: "Access denied" });
         }
         
@@ -197,23 +227,31 @@ app.get("/commande/utilisateur/:userId", isAuthenticated, async (req, res, next)
         res.json(orders);
     } catch (error) {
         console.error('Get user orders error:', error);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ message: "Error fetching orders" });
     }
 });
 
 // Get order by ID
-app.get("/commande/:orderId", isAuthenticated, async (req, res, next) => {
+app.get("/commande/:id", authenticateToken, async (req, res) => {
     try {
-        const { orderId } = req.params;
-        
-        const order = await Order.findByPk(orderId, {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order, OrderItem, Product, User } = models;
+        const { id } = req.params;
+
+        const order = await Order.findByPk(id, {
             include: [
                 {
                     model: OrderItem,
                     as: 'items',
                     include: [{ model: Product, as: 'product' }]
                 },
-                { model: User, as: 'user', attributes: ['nom', 'email'] }
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['nom', 'email']
+                }
             ]
         });
         
@@ -222,28 +260,62 @@ app.get("/commande/:orderId", isAuthenticated, async (req, res, next) => {
         }
         
         // Verify user can only access their own orders
-        if (order.user_id != req.user.id && req.user.role !== 'admin') {
+        if (req.user.userId != order.user_id && req.user.role !== 'admin') {
             return res.status(403).json({ message: "Access denied" });
         }
         
         res.json(order);
     } catch (error) {
         console.error('Get order error:', error);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ message: "Error fetching order" });
     }
 });
 
 // Admin: Get all orders
+app.get("/admin/commandes", adminAuth, async (req, res) => {
+    try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order, OrderItem, Product, User } = models;
+
+        const orders = await Order.findAll({
+            include: [
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    include: [{ model: Product, as: 'product' }]
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['nom', 'email']
+                }
+            ],
+            order: [['created_at', 'DESC']]
+        });
+
+        res.json(orders);
+    } catch (error) {
+        console.error('Admin get orders error:', error);
+        res.status(500).json({ message: "Error fetching orders" });
+    }
+});
+
+// Admin: Get all orders (with pagination)
 app.get("/admin/commande/liste", adminAuth, async (req, res) => {
     try {
-        const { status, page = 1, limit = 20 } = req.query;
-        const offset = (page - 1) * limit;
-        
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order, OrderItem, Product, User } = models;
+        const { page = 1, limit = 10, status } = req.query;
+
         let whereClause = {};
         if (status) {
             whereClause.statut = status;
         }
-        
+
         const orders = await Order.findAndCountAll({
             where: whereClause,
             include: [
@@ -252,48 +324,77 @@ app.get("/admin/commande/liste", adminAuth, async (req, res) => {
                     as: 'items',
                     include: [{ model: Product, as: 'product' }]
                 },
-                { model: User, as: 'user', attributes: ['nom', 'email'] }
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['nom', 'email']
+                }
             ],
             order: [['created_at', 'DESC']],
             limit: parseInt(limit),
-            offset: parseInt(offset)
+            offset: (parseInt(page) - 1) * parseInt(limit)
         });
-        
+
         res.json({
             orders: orders.rows,
             total: orders.count,
-            page: parseInt(page),
-            totalPages: Math.ceil(orders.count / limit)
+            pages: Math.ceil(orders.count / parseInt(limit)),
+            currentPage: parseInt(page)
         });
     } catch (error) {
         console.error('Admin get orders error:', error);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ message: "Error fetching orders" });
+    }
+});
+
+// Admin: Get order statistics
+app.get("/admin/commande/statistiques", adminAuth, async (req, res) => {
+    try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order } = models;
+
+        const totalOrders = await Order.count();
+        const pendingOrders = await Order.count({ where: { statut: 'en_attente' } });
+        const completedOrders = await Order.count({ where: { statut: 'livree' } });
+        const cancelledOrders = await Order.count({ where: { statut: 'annulee' } });
+
+        const totalRevenue = await Order.sum('total', { where: { statut: 'livree' } });
+
+        res.json({
+            totalOrders,
+            pendingOrders,
+            completedOrders,
+            cancelledOrders,
+            totalRevenue: totalRevenue || 0
+        });
+    } catch (error) {
+        console.error('Get order statistics error:', error);
+        res.status(500).json({ message: "Error fetching statistics" });
     }
 });
 
 // Admin: Update order status
-app.patch("/admin/commande/:orderId/status", adminAuth, async (req, res) => {
+app.patch("/admin/commandes/:id/status", adminAuth, async (req, res) => {
     try {
-        const { orderId } = req.params;
-        const { statut, numero_suivi, transporteur, notes } = req.body;
-        
-        const order = await Order.findByPk(orderId);
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Order } = models;
+        const { id } = req.params;
+        const { statut } = req.body;
+
+        const order = await Order.findByPk(id);
         if (!order) {
             return res.status(404).json({ message: "Order not found" });
         }
-        
-        const updates = {};
-        if (statut) updates.statut = statut;
-        if (numero_suivi) updates.numero_suivi = numero_suivi;
-        if (transporteur) updates.transporteur = transporteur;
-        if (notes) updates.notes = notes;
-        
-        await order.update(updates);
-        
+
+        await order.update({ statut });
         res.json(order);
     } catch (error) {
         console.error('Update order status error:', error);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ message: "Error updating order status" });
     }
 });
 

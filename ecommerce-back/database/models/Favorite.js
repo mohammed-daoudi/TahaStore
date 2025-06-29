@@ -31,6 +31,8 @@ const defineFavorite = async (sequelize) => {
     }
   }, {
     tableName: 'favorites',
+    timestamps: true,
+    underscored: true,
     indexes: [
       {
         fields: ['user_id']

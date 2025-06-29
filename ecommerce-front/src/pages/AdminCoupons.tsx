@@ -68,7 +68,7 @@ const AdminCoupons: React.FC = () => {
 
   const fetchCoupons = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20',
@@ -95,7 +95,7 @@ const AdminCoupons: React.FC = () => {
 
   const handleCreateCoupon = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('http://localhost:4003/admin/coupons', {
         method: 'POST',
         headers: {
@@ -129,7 +129,7 @@ const AdminCoupons: React.FC = () => {
     if (!selectedCoupon) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4003/admin/coupons/${selectedCoupon.id}`, {
         method: 'PUT',
         headers: {
@@ -153,7 +153,7 @@ const AdminCoupons: React.FC = () => {
     if (!confirm('Are you sure you want to delete this coupon?')) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4003/admin/coupons/${couponId}`, {
         method: 'DELETE',
         headers: {

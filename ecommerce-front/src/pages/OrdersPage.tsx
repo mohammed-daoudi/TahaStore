@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, ShoppingBag, Truck, Package, CheckCircle, Clock } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { orderService } from '../services/orderService';
+import { fetchOrders, updateOrderStatus } from '../services/orderService';
 
 type OrderStatus = 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -124,7 +124,7 @@ function OrdersPage() {
       setIsLoading(true);
       try {
         if (user) {
-          const userOrders = await orderService.getUserOrders(user.id);
+          const userOrders = await fetchOrders(user.id);
           setOrders(userOrders);
         }
       } catch (error) {

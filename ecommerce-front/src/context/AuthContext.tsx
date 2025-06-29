@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
 type User = {
   id: string;
   email: string;
   name: string;
+  role?: string;
 };
 
 type AuthContextType = {
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is logged in on initial load
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     authService.logout();
     setUser(null);
+    navigate('/login');
   };
 
   return (

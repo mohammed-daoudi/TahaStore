@@ -59,8 +59,8 @@ function ProductDetailPage() {
       for (let i = 0; i < quantity; i++) {
         addItem({
           id: product.id,
-          name: product.name,
-          price: product.price,
+          name: product.name || product.nom,
+          price: product.price || product.prix || 0,
           image: product.images[0],
         });
       }
@@ -155,7 +155,7 @@ function ProductDetailPage() {
           <li>
             <span>/</span>
           </li>
-          <li className="text-gray-700 font-medium truncate">{product.name}</li>
+          <li className="text-gray-700 font-medium truncate">{product.name || product.nom}</li>
         </ol>
       </nav>
 
@@ -165,12 +165,12 @@ function ProductDetailPage() {
         <div>
           <div className="bg-white rounded-lg overflow-hidden mb-4">
             <img
-              src={product.images[selectedImage]}
-              alt={product.name}
+              src={product.images && product.images[selectedImage] ? product.images[selectedImage] : '/placeholder-product.jpg'}
+              alt={product.name || product.nom}
               className="w-full h-full object-contain aspect-square"
             />
           </div>
-          {product.images.length > 1 && (
+          {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {product.images.map((image: string, index: number) => (
                 <button
@@ -184,7 +184,7 @@ function ProductDetailPage() {
                 >
                   <img
                     src={image}
-                    alt={`${product.name} view ${index + 1}`}
+                    alt={`${product.name || product.nom} view ${index + 1}`}
                     className="w-full h-full object-cover aspect-square"
                   />
                 </button>
@@ -195,7 +195,7 @@ function ProductDetailPage() {
 
         {/* Product Info */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name || product.nom}</h1>
           
           {/* Rating */}
           <div className="flex items-center mb-4">
@@ -205,7 +205,7 @@ function ProductDetailPage() {
                   key={i}
                   xmlns="http://www.w3.org/2000/svg"
                   className={`h-5 w-5 ${
-                    i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'
+                    i < Math.floor(product.rating || 0) ? 'text-yellow-400' : 'text-gray-300'
                   }`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
@@ -215,19 +215,19 @@ function ProductDetailPage() {
               ))}
             </div>
             <span className="ml-2 text-gray-600">
-              {product.rating} ({product.reviewCount} reviews)
+              {product.rating || 0} ({product.reviewCount || 0} reviews)
             </span>
             <span className="mx-2 text-gray-300">|</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-              product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              (product.stock || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}>
-              {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+              {(product.stock || 0) > 0 ? 'In Stock' : 'Out of Stock'}
             </span>
           </div>
           
           {/* Price */}
           <div className="text-2xl font-bold text-gray-900 mb-4">
-            ${product.price.toFixed(2)}
+            ${Number(product.price ?? product.prix ?? 0).toFixed(2)}
           </div>
           
           {/* Description */}
@@ -260,7 +260,7 @@ function ProductDetailPage() {
               variant="primary"
               fullWidth
               onClick={handleAddToCart}
-              disabled={!product.stock}
+              disabled={!(product.stock || 0)}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
               Add to Cart
@@ -276,10 +276,20 @@ function ProductDetailPage() {
             >
               <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
             </Button>
-            <button className="flex items-center text-gray-600 hover:text-blue-900">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Trigger the social share component
+                const shareComponent = document.querySelector('[data-share-trigger]');
+                if (shareComponent) {
+                  shareComponent.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="flex items-center text-gray-600 hover:text-blue-900"
+            >
               <Share2 className="h-5 w-5 mr-1" />
               <span className="text-sm">Share</span>
-            </button>
+            </Button>
           </div>
           
           {/* Shipping & Returns */}
@@ -329,7 +339,7 @@ function ProductDetailPage() {
         <div className="py-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Product Features</h3>
           <ul className="list-disc pl-5 space-y-2 text-gray-700">
-            {product.features.map((feature: string, index: number) => (
+            {product.features && product.features.map((feature: string, index: number) => (
               <li key={index}>{feature}</li>
             ))}
           </ul>
@@ -340,18 +350,19 @@ function ProductDetailPage() {
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-6">You May Also Like</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {relatedProducts.map((product) => (
+          {relatedProducts && relatedProducts.map((product) => (
             <ProductCard key={product.id} {...product} />
           ))}
         </div>
       </div>
 
       {/* Social Share */}
-      <div className="mt-8">
+      <div className="mt-8" data-share-trigger>
         <SocialShare
           url={window.location.href}
-          title={product.name}
+          title={product.name || product.nom}
           description={product.description}
+          image={product.images && product.images[0] ? product.images[0] : undefined}
         />
       </div>
     </div>

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Settings } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard';
 import Button from '../components/ui/Button';
 import { productService } from '../services/productService';
+import { useAuth } from '../context/AuthContext';
 
 function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
@@ -55,10 +57,50 @@ function HomePage() {
                   Explore Featured
                 </Button>
               </Link>
+              {user?.role === 'admin' && (
+                <Link to="/admin">
+                  <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
       </section>
+
+      {/* Admin Dashboard Section */}
+      {user?.role === 'admin' && (
+        <section className="py-12 bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Admin Dashboard
+              </h2>
+              <p className="text-gray-600">Manage your store, products, and customers</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { name: 'Products', route: '/admin/products', icon: '📦', description: 'Manage products' },
+                { name: 'Orders', route: '/admin/orders', icon: '📋', description: 'View orders' },
+                { name: 'Users', route: '/admin/users', icon: '👥', description: 'Manage users' },
+                { name: 'Analytics', route: '/admin', icon: '📊', description: 'View analytics' },
+              ].map((item, index) => (
+                <Link 
+                  to={item.route}
+                  key={index}
+                  className="group bg-white rounded-lg shadow-sm p-6 text-center transition hover:shadow-md hover:scale-105 border border-gray-200"
+                >
+                  <div className="text-4xl mb-3">{item.icon}</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.name}</h3>
+                  <p className="text-sm text-gray-600">{item.description}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Categories Section */}
       <section className="py-12 bg-gray-50">

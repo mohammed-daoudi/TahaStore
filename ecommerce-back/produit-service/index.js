@@ -5,18 +5,26 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 
 // Import database configuration and models
-const { sequelize, testConnection } = require('../database/config');
-const { Product, Favorite, Review, User } = require('../database/models');
+const { getSequelize, testConnection } = require('../database/config');
+const { initializeModels } = require('../database/models');
 
 app.use(cors());
 app.use(express.json());
 
-// Initialize database connection
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Initialize database connection and models
+let models = null;
+let sequelize = null;
 const initializeDatabase = async () => {
     try {
+        sequelize = await getSequelize();
         await testConnection();
+        models = await initializeModels(sequelize);
         console.log('✅ Product Service: Successfully connected to MySQL database.');
     } catch (error) {
         console.error('❌ Product Service: Database connection error:', error);
@@ -31,14 +39,30 @@ initializeDatabase();
 // Multer setup for local disk image upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../uploads/products'));
+    cb(null, path.join(__dirname, '../uploads/products'));
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
   }
 });
-const upload = multer({ storage });
+
+const fileFilter = (req, file, cb) => {
+  // Check file type
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({ 
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 // Admin authentication middleware
 function adminAuth(req, res, next) {
@@ -55,17 +79,28 @@ function adminAuth(req, res, next) {
 
 // Image upload endpoint (admin only)
 app.post('/admin/upload-image', adminAuth, upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    
+    // Return the relative URL to the uploaded image
+    const imageUrl = `/uploads/products/${req.file.filename}`;
+    console.log('✅ Image uploaded successfully:', req.file.filename);
+    res.status(201).json({ imageUrl });
+  } catch (error) {
+    console.error('❌ Image upload error:', error);
+    res.status(500).json({ message: 'Failed to upload image' });
   }
-  // Return the relative URL to the uploaded image
-  const imageUrl = `/uploads/products/${req.file.filename}`;
-  res.status(201).json({ imageUrl });
 });
 
 // Secure add product endpoint (admin only)
 app.post("/produit/ajouter", adminAuth, async (req, res, next) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
         const { nom, description, prix, categorie, marque, stock, images } = req.body;
         const newProduct = await Product.create({
             nom,
@@ -86,6 +121,10 @@ app.post("/produit/ajouter", adminAuth, async (req, res, next) => {
 // Edit product (admin only)
 app.put("/admin/produit/:id", adminAuth, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
         const { id } = req.params;
         const updates = req.body;
         const product = await Product.findByPk(id);
@@ -101,6 +140,10 @@ app.put("/admin/produit/:id", adminAuth, async (req, res) => {
 // Delete product (admin only)
 app.delete("/admin/produit/:id", adminAuth, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
         const { id } = req.params;
         const product = await Product.findByPk(id);
         if (!product) return res.status(404).json({ message: "Product not found" });
@@ -115,13 +158,18 @@ app.delete("/admin/produit/:id", adminAuth, async (req, res) => {
 // Update price, stock, category (admin only)
 app.patch("/admin/produit/:id", adminAuth, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
         const { id } = req.params;
-        const { prix, stock, categorie } = req.body;
+        const { prix, stock, categorie, actif } = req.body;
         const product = await Product.findByPk(id);
         if (!product) return res.status(404).json({ message: "Product not found" });
         if (prix !== undefined) product.prix = prix;
         if (stock !== undefined) product.stock = stock;
         if (categorie !== undefined) product.categorie = categorie;
+        if (actif !== undefined) product.actif = actif;
         await product.save();
         res.json(product);
     } catch (error) {
@@ -133,6 +181,10 @@ app.patch("/admin/produit/:id", adminAuth, async (req, res) => {
 // Admin: List all products (including inactive)
 app.get("/admin/produit/liste", adminAuth, async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product, Review, User } = models;
         const products = await Product.findAll({
             order: [['created_at', 'DESC']],
             include: [
@@ -150,27 +202,50 @@ app.get("/admin/produit/liste", adminAuth, async (req, res) => {
     }
 });
 
+// Admin: Create new product
+app.post("/admin/produit", adminAuth, async (req, res) => {
+    try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
+        const productData = req.body;
+        
+        // Create the new product
+        const newProduct = await Product.create(productData);
+        
+        res.status(201).json(newProduct);
+    } catch (error) {
+        console.error('Admin create product error:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Get products endpoint
 app.get("/produit/liste", async (req, res, next) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product, Review, User } = models;
         const { category, search, minPrice, maxPrice, sort } = req.query;
         
-        let whereClause = { est_actif: true };
+        let whereClause = { actif: true };
         
         if (category) {
             whereClause.categorie = category;
         }
         
         if (search) {
-            whereClause.nom = { [sequelize.Op.like]: `%${search}%` };
+            whereClause.nom = { [Op.like]: `%${search}%` };
         }
         
         if (minPrice) {
-            whereClause.prix = { [sequelize.Op.gte]: parseFloat(minPrice) };
+            whereClause.prix = { [Op.gte]: parseFloat(minPrice) };
         }
         
         if (maxPrice) {
-            whereClause.prix = { ...whereClause.prix, [sequelize.Op.lte]: parseFloat(maxPrice) };
+            whereClause.prix = { ...whereClause.prix, [Op.lte]: parseFloat(maxPrice) };
         }
         
         let orderClause = [['created_at', 'DESC']];
@@ -211,6 +286,10 @@ app.get("/produit/liste", async (req, res, next) => {
 // Get product by ID endpoint
 app.get("/produit/:id", async (req, res, next) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product, Review, User } = models;
         const product = await Product.findByPk(req.params.id, {
             include: [
                 {
@@ -235,6 +314,10 @@ app.get("/produit/:id", async (req, res, next) => {
 // Buy products endpoint (get products by IDs)
 app.post("/produit/acheter", async (req, res, next) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product } = models;
         const { ids } = req.body;
         
         const products = await Product.findAll({
@@ -251,6 +334,10 @@ app.post("/produit/acheter", async (req, res, next) => {
 // Add to favorites
 app.post("/favorites", async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product, Favorite } = models;
         const { userId, productId } = req.body;
 
         // Check if product exists
@@ -287,6 +374,10 @@ app.post("/favorites", async (req, res) => {
 // Remove from favorites
 app.delete("/favorites/:userId/:productId", async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Favorite } = models;
         const { userId, productId } = req.params;
 
         const result = await Favorite.destroy({
@@ -307,6 +398,10 @@ app.delete("/favorites/:userId/:productId", async (req, res) => {
 // Get user favorites
 app.get("/favorites/:userId", async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Favorite, Product } = models;
         const { userId } = req.params;
 
         const favorites = await Favorite.findAll({
@@ -325,6 +420,10 @@ app.get("/favorites/:userId", async (req, res) => {
 // Check if product is favorited
 app.get("/favorites/:userId/:productId", async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Favorite } = models;
         const { userId, productId } = req.params;
 
         const favorite = await Favorite.findOne({
@@ -341,6 +440,10 @@ app.get("/favorites/:userId/:productId", async (req, res) => {
 // Add review
 app.post("/produit/:id/reviews", async (req, res) => {
     try {
+        if (!models) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+        const { Product, Review } = models;
         const { userId, note, commentaire } = req.body;
         const productId = req.params.id;
 

@@ -99,6 +99,8 @@ function ProductsPage() {
             <div className="relative">
               <input
                 type="text"
+                name="search"
+                id="search"
                 placeholder="Search products..."
                 className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 value={searchQuery}
@@ -134,6 +136,7 @@ function ProductsPage() {
           <div className="hidden md:block">
             <select
               name="sort"
+              id="sort"
               value={filters.sort}
               onChange={handleFilterChange}
               className="rounded-md border border-gray-300 py-2 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -227,6 +230,7 @@ function ProductsPage() {
               </label>
               <select
                 name="category"
+                id="category"
                 value={filters.category}
                 onChange={handleFilterChange}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -247,6 +251,7 @@ function ProductsPage() {
                 <input
                   type="number"
                   name="minPrice"
+                  id="minPrice"
                   placeholder="Min"
                   value={filters.minPrice}
                   onChange={handleFilterChange}
@@ -256,6 +261,7 @@ function ProductsPage() {
                 <input
                   type="number"
                   name="maxPrice"
+                  id="maxPrice"
                   placeholder="Max"
                   value={filters.maxPrice}
                   onChange={handleFilterChange}
@@ -270,6 +276,7 @@ function ProductsPage() {
               </label>
               <select
                 name="sort"
+                id="sort"
                 value={filters.sort}
                 onChange={handleFilterChange}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -335,6 +342,7 @@ function ProductsPage() {
                   <input
                     type="number"
                     name="minPrice"
+                    id="minPriceDesktop"
                     placeholder="Min"
                     value={filters.minPrice}
                     onChange={handleFilterChange}
@@ -344,12 +352,31 @@ function ProductsPage() {
                   <input
                     type="number"
                     name="maxPrice"
+                    id="maxPriceDesktop"
                     placeholder="Max"
                     value={filters.maxPrice}
                     onChange={handleFilterChange}
                     className="w-full rounded-md border border-gray-300 py-1.5 px-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sort By
+                </label>
+                <select
+                  name="sort"
+                  id="sortDesktop"
+                  value={filters.sort}
+                  onChange={handleFilterChange}
+                  className="w-full rounded-md border border-gray-300 py-2 px-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="popular">Most Popular</option>
+                </select>
               </div>
               
               <div className="pt-2">

@@ -48,7 +48,7 @@ const AdminUsers: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20'
@@ -78,7 +78,7 @@ const AdminUsers: React.FC = () => {
 
   const handleBlockUser = async (userId: number, blocked: boolean) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4002/admin/users/${userId}/block`, {
         method: 'PATCH',
         headers: {
@@ -100,7 +100,7 @@ const AdminUsers: React.FC = () => {
     if (!selectedUser || !newPassword) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`http://localhost:4002/admin/users/${selectedUser.id}/reset-password`, {
         method: 'POST',
         headers: {

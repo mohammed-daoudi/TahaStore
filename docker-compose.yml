@@ -6,11 +6,66 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      - auth-service
+      - produit-service
+      - commande-service
+      - admin-service
+      - favorites-service
 
-  backend:
+  auth-service:
     build: ./ecommerce-back
     ports:
-      - "5000:5000"
+      - "4000:4000"
     volumes:
       - ./ecommerce-back:/app
+    working_dir: /app/auth-service
+    command: npm start
+
+  produit-service:
+    build: ./ecommerce-back
+    ports:
+      - "4002:4002"
+    volumes:
+      - ./ecommerce-back:/app
+    working_dir: /app/produit-service
+    command: npm start
+
+  commande-service:
+    build: ./ecommerce-back
+    ports:
+      - "4003:4003"
+    volumes:
+      - ./ecommerce-back:/app
+    working_dir: /app/commande-service
+    command: npm start
+
+  admin-service:
+    build: ./ecommerce-back
+    ports:
+      - "4004:4004"
+    volumes:
+      - ./ecommerce-back:/app
+    working_dir: /app/admin-service
+    command: npm start
+
+  favorites-service:
+    build: ./ecommerce-back
+    ports:
+      - "4001:4001"
+    volumes:
+      - ./ecommerce-back:/app
+    working_dir: /app/favorites-service
+    command: npm start
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: 
+      MYSQL_DATABASE: shopease
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
